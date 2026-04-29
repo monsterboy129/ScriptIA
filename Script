@@ -1,518 +1,399 @@
-Script Avançado para Volleyball Legends
-
-// ==UserScript==
-// @name         Volleyball Legends - Super Pack Avançado
-// @namespace    volleyball-legends-ultimate
-// @version      3.7.1
-// @description  Script completo com múltiplas funções para Volleyball Legends
-// @author       GameMaster
-// @match        ://volleyballlegends.io/
-// @match        ://.volleyballlegends.io/*
-// @grant        GM_addStyle
-// @grant        GM_getValue
-// @grant        GM_setValue
-// @grant        unsafeWindow
-// @run-at       document-start
-// ==/UserScript==
-
-(function() {
-    'use strict';
-
-    // Configurações do script
-    const CONFIG = {
-        autoSave: true,
-        showMenu: true,
-        hotkeys: true,
-        debugMode: false
-    };
-
-    // Estado do jogo
-    let gameState = {
-        playerStats: {
-            power: 1000,
-            speed: 1000,
-            jump: 1000,
-            stamina: 1000,
-            accuracy: 100
-        },
-        matchSettings: {
-            instantWin: false,
-            unlimitedStamina: true,
-            superSpike: true,
-            teleportServe: false,
-            ballControl: true,
-            gravityControl: false
-        },
-        visualEnhancements: {
-            hitMarker: true,
-            trajectoryLine: true,
-            enemyWeakness: true,
-            perfectTiming: true
-        },
-        economy: {
-            unlimitedCoins: true,
-            unlimitedGems: true,
-            autoCollect: true,
-            noAds: true
-        }
-    };
-
-    // Interface do usuário
-    class UIManager {
-        constructor() {
-            this.menu = null;
-            this.isVisible = false;
-            this.init();
-        }
-
-        init() {
-            this.createMenu();
-            this.createHUD();
-            this.applyStyles();
-        }
-
-        createMenu() {
-            this.menu = document.createElement('div');
-            this.menu.id = 'vl-ultimate-menu';
-            this.menu.innerHTML = `
-
-                    ⚡ VOLLEYBALL LEGENDS ULTIMATE
-                    ✕
-
-                    👤 Player
-                    🎮 Match
-                    👁️ Visual
-                    💰 Economy
-                    ⚙️ Settings
-
-                    💾 Save Config
-                    🔄 Reset
-
-            `;
-
-            document.body.appendChild(this.menu);
-            this.setupEventListeners();
-            this.loadTabContent('player');
-        }
-
-        createHUD() {
-            const hud = document.createElement('div');
-            hud.id = 'vl-hud';
-            hud.innerHTML = `
-
-                    ⚡ Power: ${gameState.playerStats.power}
-                    🏃 Speed: ${gameState.playerStats.speed}
-                    🦘 Jump: ${gameState.playerStats.jump}
-
-                    📊 Menu
-                    🛡️ God Mode
-                    🤖 Auto Play
-
-            `;
-            document.body.appendChild(hud);
-        }
-
-        applyStyles() {
-            GM_addStyle(`
-                #vl-ultimate-menu {
-                    position: fixed;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    width: 600px;
-                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                    border: 2px solid #00ff88;
-                    border-radius: 15px;
-                    box-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
-                    z-index: 99999;
-                    display: none;
-                    color: white;
-                    font-family: 'Arial', sans-serif;
-                }
-
-                .vl-menu-header {
-                    background: linear-gradient(90deg, #00ff88, #00ccff);
-                    padding: 15px;
-                    border-radius: 13px 13px 0 0;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                }
-
-                .vl-menu-header h2 {
-                    margin: 0;
-                    color: #000;
-                    font-size: 18px;
-                    font-weight: bold;
-                    text-shadow: 1px 1px 2px rgba(255,255,255,0.5);
-                }
-
-                .vl-close-btn {
-                    background: #ff4444;
-                    color: white;
-                    border: none;
-                    border-radius: 50%;
-                    width: 30px;
-                    height: 30px;
-                    cursor: pointer;
-                    font-size: 16px;
-                }
-
-                .vl-tabs {
-                    display: flex;
-                    background: #0f3460;
-                    padding: 10px;
-                }
-
-                .vl-tab {
-                    flex: 1;
-                    padding: 10px;
-                    background: transparent;
-                    border: none;
-                    color: white;
-                    cursor: pointer;
-                    border-radius: 5px;
-                    margin: 0 2px;
-                    transition: all 0.3s;
-                }
-
-                .vl-tab.active {
-                    background: #00ff88;
-                    color: #000;
-                    font-weight: bold;
-                }
-
-                .vl-tab-content {
-                    padding: 20px;
-                    max-height: 400px;
-                    overflow-y: auto;
-                }
-
-                .vl-control-group {
-                    margin-bottom: 15px;
-                    padding: 15px;
-                    background: rgba(255,255,255,0.05);
-                    border-radius: 8px;
-                    border-left: 4px solid #00ff88;
-                }
-
-                .vl-control-group h3 {
-                    margin-top: 0;
-                    color: #00ff88;
-                    font-size: 16px;
-                }
-
-                .vl-slider-container {
-                    display: flex;
-                    align-items: center;
-                    margin: 10px 0;
-                }
-
-                .vl-slider-container label {
-                    width: 120px;
-                    font-size: 14px;
-                }
-
-                .vl-slider {
-                    flex: 1;
-                    margin: 0 15px;
-                    -webkit-appearance: none;
-                    height: 8px;
-                    background: #333;
-                    border-radius: 4px;
-                    outline: none;
-                }
-
-                .vl-slider::-webkit-slider-thumb {
-                    -webkit-appearance: none;
-                    width: 20px;
-                    height: 20px;
-                    background: #00ff88;
-                    border-radius: 50%;
-                    cursor: pointer;
-                }
-
-                .vl-value {
-                    width: 60px;
-                    text-align: center;
-                    font-weight: bold;
-                    color: #00ff88;
-                }
-
-                .vl-toggle {
-                    position: relative;
-                    display: inline-block;
-                    width: 50px;
-                    height: 24px;
-                    margin-right: 10px;
-                }
-
-                .vl-toggle input {
-                    opacity: 0;
-                    width: 0;
-                    height: 0;
-                }
-
-                .vl-toggle-slider {
-                    position: absolute;
-                    cursor: pointer;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    background-color: #444;
-                    transition: .4s;
-                    border-radius: 24px;
-                }
-
-                .vl-toggle-slider:before {
-                    position: absolute;
-                    content: "";
-                    height: 16px;
-                    width: 16px;
-                    left: 4px;
-                    bottom: 4px;
-                    background-color: white;
-                    transition: .4s;
-                    border-radius: 50%;
-                }
-
-                input:checked + .vl-toggle-slider {
-                    background-color: #00ff88;
-                }
-
-                input:checked + .vl-toggle-slider:before {
-                    transform: translateX(26px);
-                }
-
-                .vl-checkbox-label {
-                    display: flex;
-                    align-items: center;
-                    margin: 8px 0;
-                    cursor: pointer;
-                }
-
-                #vl-hud {
-                    position: fixed;
-                    top: 10px;
-                    right: 10px;
-                    background: rgba(0,0,0,0.8);
-                    border: 2px solid #00ff88;
-                    border-radius: 10px;
-                    padding: 10px;
-                    z-index: 99998;
-                    color: white;
-                    font-family: 'Arial', sans-serif;
-                }
-
-                .vl-hud-stats {
-                    display: flex;
-                    flex-direction: column;
-                    margin-bottom: 10px;
-                }
-
-                .vl-hud-stats span {
-                    font-size: 12px;
-                    margin: 2px 0;
-                }
-
-                .vl-hud-controls {
-                    display: flex;
-                    gap: 5px;
-                }
-
-                .vl-hud-btn {
-                    flex: 1;
-                    padding: 5px 10px;
-                    background: #00ff88;
-                    border: none;
-                    border-radius: 5px;
-                    color: #000;
-                    font-weight: bold;
-                    cursor: pointer;
-                    font-size: 11px;
-                }
-
-                .hit-marker {
-                    position: absolute;
-                    width: 20px;
-                    height: 20px;
-                    background: radial-gradient(circle, #ff0000, transparent);
-                    border-radius: 50%;
-                    pointer-events: none;
-                    animation: pulse 0.5s ease-out;
-                }
-
-                .trajectory-line {
-                    position: absolute;
-                    background: linear-gradient(to right, #00ff88, transparent);
-                    height: 3px;
-                    pointer-events: none;
-                    transform-origin: left center;
-                }
-
-                @keyframes pulse {
-                    0% { transform: scale(1); opacity: 1; }
-                    100% { transform: scale(2); opacity: 0; }
-                }
-            `);
-        }
-
-        loadTabContent(tabName) {
-            const content = this.menu.querySelector('.vl-tab-content');
-
-            switch(tabName) {
-                case 'player':
-                    content.innerHTML = this.getPlayerTab();
-                    break;
-                case 'match':
-                    content.innerHTML = this.getMatchTab();
-                    break;
-                case 'visual':
-                    content.innerHTML = this.getVisualTab();
-                    break;
-                case 'economy':
-                    content.innerHTML = this.getEconomyTab();
-                    break;
-                case 'settings':
-                    content.innerHTML = this.getSettingsTab();
-                    break;
-            }
-
-            this.setupTabControls();
-        }
-
-        getPlayerTab() {
-            return `
-
-                    📊 Player Statistics
-
-                        Power:
-
-                        ${gameState.playerStats.power}
-                        MAX
-
-                        Speed:
-
-                        ${gameState.playerStats.speed}
-                        MAX
-
-                        Jump Height:
-
-                        ${gameState.playerStats.jump}
-                        MAX
-
-                        Stamina:
-
-                        ${gameState.playerStats.stamina}
-                        MAX
-
-                        Accuracy %:
-
-                        ${gameState.playerStats.accuracy}%
-                        100%
-
-                    Apply All Stats
-
-                    ✨ Special Abilities
-
-                        Super Spike (One-hit KO)
-
-                        Teleport Serve
-
-                        Perfect Ball Control
-
-                        Gravity Control
-
-            `;
-        }
-
-        getMatchTab() {
-            return `
-
-                    ⚔️ Match Control
-
-                        Instant Win
-
-                        Unlimited Stamina
-
-                        Freeze Enemies
-
-                        No Foul Detection
-
-                        Force Win Match
-                        Force Lose (Stealth)
-                        Reset Match
-
-                    🎯 Score Control
-
-                    Set Scores
-
-                        Set Win Condition:
-
-                            Best of 3
-                            Best of 5
-                            Single Set
-
-            `;
-        }
-
-        getVisualTab() {
-            return `
-
-                    👁️ Visual Enhancements
-
-                        Hit Marker Display
-
-                        Ball Trajectory Line
-
-                        Show Enemy Weakness
-
-                        Perfect Timing Indicator
-
-                        Wireframe Mode
-
-                        Rainbow Players
-
-                    🎨 Custom Colors
-
-                            Player Color:
-
-                            Ball Color:
-
-                            Court Color:
-
-                            Net Color:
-
-                    Apply Colors
-
-            `;
-        }
-
-        getEconomyTab() {
-            return `
-
-                    💰 Currency & Resources
-
-                        Unlimited Coins
-
-                        Unlimited Gems
-
-                        Auto-Collect Rewards
-
-                        Remove All Ads
-
-                        Free In-App Purchases
-
-                        Add Resources:
-
-                            Add Coins
-
-                            Add Gems
-
-                        Unlock All Items & Skins
-
-                    🏆 Achievements & Progress
-
-                    Unlock All Achievements
-                    <button class="vl-hud-btn" onclick="max
+-- Script para Volleyball Legends - Xeno Executor
+-- Compatível com a versão mais recente do jogo
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local Humanoid = Character:WaitForChild("Humanoid")
+
+-- Configurações
+local Config = {
+    AutoServe = true,
+    AutoJump = false,
+    JumpPower = 50,
+    WalkSpeed = 32,
+    AntiStun = true,
+    NoCooldown = true,
+    AutoBlock = false,
+    BallESP = true,
+    PlayerESP = true,
+    InfiniteStamina = true,
+    AutoSpike = true,
+    TeleportToBall = false
+}
+
+-- Interface GUI simples
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game.CoreGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 300, 0, 400)
+MainFrame.Position = UDim2.new(0, 10, 0.5, -200)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Color3.fromRGB(60, 60, 80)
+MainFrame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Text = "Volleyball Legends Hack v2.0"
+Title.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.GothamBold
+Title.Parent = MainFrame
+
+-- Lista de funções
+local FunctionsFrame = Instance.new("ScrollingFrame")
+FunctionsFrame.Size = UDim2.new(1, -10, 1, -40)
+FunctionsFrame.Position = UDim2.new(0, 5, 0, 35)
+FunctionsFrame.BackgroundTransparency = 1
+FunctionsFrame.CanvasSize = UDim2.new(0, 0, 0, 600)
+FunctionsFrame.Parent = MainFrame
+
+local yOffset = 0
+
+-- Função para criar botões de toggle
+local function CreateToggle(text, configKey, yPos)
+    local ToggleFrame = Instance.new("Frame")
+    ToggleFrame.Size = UDim2.new(1, 0, 0, 25)
+    ToggleFrame.Position = UDim2.new(0, 0, 0, yPos)
+    ToggleFrame.BackgroundTransparency = 1
+    ToggleFrame.Parent = FunctionsFrame
+    
+    local ToggleButton = Instance.new("TextButton")
+    ToggleButton.Size = UDim2.new(0.8, 0, 1, 0)
+    ToggleButton.Position = UDim2.new(0, 0, 0, 0)
+    ToggleButton.Text = text
+    ToggleButton.BackgroundColor3 = Config[configKey] and Color3.fromRGB(60, 120, 60) or Color3.fromRGB(120, 60, 60)
+    ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleButton.Font = Enum.Font.Gotham
+    ToggleButton.Parent = ToggleFrame
+    
+    ToggleButton.MouseButton1Click:Connect(function()
+        Config[configKey] = not Config[configKey]
+        ToggleButton.BackgroundColor3 = Config[configKey] and Color3.fromRGB(60, 120, 60) or Color3.fromRGB(120, 60, 60)
+    end)
+    
+    return ToggleFrame
+end
+
+-- Criar todos os toggles
+CreateToggle("Auto Serve", "AutoServe", yOffset) yOffset = yOffset + 30
+CreateToggle("Auto Jump", "AutoJump", yOffset) yOffset = yOffset + 30
+CreateToggle("Anti Stun", "AntiStun", yOffset) yOffset = yOffset + 30
+CreateToggle("No Cooldown", "NoCooldown", yOffset) yOffset = yOffset + 30
+CreateToggle("Auto Block", "AutoBlock", yOffset) yOffset = yOffset + 30
+CreateToggle("Ball ESP", "BallESP", yOffset) yOffset = yOffset + 30
+CreateToggle("Player ESP", "PlayerESP", yOffset) yOffset = yOffset + 30
+CreateToggle("Infinite Stamina", "InfiniteStamina", yOffset) yOffset = yOffset + 30
+CreateToggle("Auto Spike", "AutoSpike", yOffset) yOffset = yOffset + 30
+CreateToggle("Teleport to Ball", "TeleportToBall", yOffset) yOffset = yOffset + 30
+
+-- Slider para velocidade
+local SpeedSliderFrame = Instance.new("Frame")
+SpeedSliderFrame.Size = UDim2.new(1, 0, 0, 40)
+SpeedSliderFrame.Position = UDim2.new(0, 0, 0, yOffset)
+SpeedSliderFrame.BackgroundTransparency = 1
+SpeedSliderFrame.Parent = FunctionsFrame
+
+local SpeedLabel = Instance.new("TextLabel")
+SpeedLabel.Size = UDim2.new(1, 0, 0.5, 0)
+SpeedLabel.Text = "Walk Speed: " .. Config.WalkSpeed
+SpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedLabel.BackgroundTransparency = 1
+SpeedLabel.Font = Enum.Font.Gotham
+SpeedLabel.Parent = SpeedSliderFrame
+
+local SpeedSlider = Instance.new("TextButton")
+SpeedSlider.Size = UDim2.new(1, 0, 0.5, 0)
+SpeedSlider.Position = UDim2.new(0, 0, 0.5, 0)
+SpeedSlider.Text = "Click to Change (16-100)"
+SpeedSlider.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+SpeedSlider.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedSlider.Font = Enum.Font.Gotham
+SpeedSlider.Parent = SpeedSliderFrame
+
+SpeedSlider.MouseButton1Click:Connect(function()
+    local newSpeed = tonumber(game:GetService("TextChatService").TextChannels.RBXGeneral:DisplayInputBox("Enter Walk Speed (16-100):", tostring(Config.WalkSpeed)))
+    if newSpeed and newSpeed >= 16 and newSpeed <= 100 then
+        Config.WalkSpeed = newSpeed
+        SpeedLabel.Text = "Walk Speed: " .. Config.WalkSpeed
+    end
+end)
+
+yOffset = yOffset + 45
+
+-- Slider para poder de salto
+local JumpSliderFrame = Instance.new("Frame")
+JumpSliderFrame.Size = UDim2.new(1, 0, 0, 40)
+JumpSliderFrame.Position = UDim2.new(0, 0, 0, yOffset)
+JumpSliderFrame.BackgroundTransparency = 1
+JumpSliderFrame.Parent = FunctionsFrame
+
+local JumpLabel = Instance.new("TextLabel")
+JumpLabel.Size = UDim2.new(1, 0, 0.5, 0)
+JumpLabel.Text = "Jump Power: " .. Config.JumpPower
+JumpLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+JumpLabel.BackgroundTransparency = 1
+JumpLabel.Font = Enum.Font.Gotham
+JumpLabel.Parent = JumpSliderFrame
+
+local JumpSlider = Instance.new("TextButton")
+JumpSlider.Size = UDim2.new(1, 0, 0.5, 0)
+JumpSlider.Position = UDim2.new(0, 0, 0.5, 0)
+JumpSlider.Text = "Click to Change (50-200)"
+JumpSlider.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+JumpSlider.TextColor3 = Color3.fromRGB(255, 255, 255)
+JumpSlider.Font = Enum.Font.Gotham
+JumpSlider.Parent = JumpSliderFrame
+
+JumpSlider.MouseButton1Click:Connect(function()
+    local newPower = tonumber(game:GetService("TextChatService").TextChannels.RBXGeneral:DisplayInputBox("Enter Jump Power (50-200):", tostring(Config.JumpPower)))
+    if newPower and newPower >= 50 and newPower <= 200 then
+        Config.JumpPower = newPower
+        JumpLabel.Text = "Jump Power: " .. Config.JumpPower
+    end
+end)
+
+-- Função para encontrar a bola
+local function FindBall()
+    for _, obj in pairs(game:GetService("Workspace"):GetDescendants()) do
+        if obj.Name:lower():find("ball") or obj.Name:lower():find("volley") then
+            if obj:IsA("BasePart") then
+                return obj
+            end
+        end
+    end
+    return nil
+end
+
+-- Função para auto-serviço
+local function AutoServeFunction()
+    while Config.AutoServe do
+        wait(0.5)
+        local ball = FindBall()
+        if ball then
+            local distance = (HumanoidRootPart.Position - ball.Position).Magnitude
+            if distance < 20 then
+                -- Simular tecla de serviço (pode precisar de ajuste)
+                keypress(0x45) -- Tecla E
+                wait(0.1)
+                keyrelease(0x45)
+            end
+        end
+    end
+end
+
+-- Função para auto-spike
+local function AutoSpikeFunction()
+    while Config.AutoSpike do
+        wait(0.3)
+        local ball = FindBall()
+        if ball then
+            local distance = (HumanoidRootPart.Position - ball.Position).Magnitude
+            if distance < 15 and ball.Position.Y > HumanoidRootPart.Position.Y + 2 then
+                -- Simular tecla de spike (pode precisar de ajuste)
+                keypress(0x51) -- Tecla Q
+                wait(0.1)
+                keyrelease(0x51)
+            end
+        end
+    end
+end
+
+-- Função para auto-bloco
+local function AutoBlockFunction()
+    while Config.AutoBlock do
+        wait(0.2)
+        local ball = FindBall()
+        if ball then
+            local velocity = ball.Velocity
+            -- Verificar se a bola está vindo em direção ao jogador
+            if velocity.Magnitude > 20 then
+                local directionToPlayer = (HumanoidRootPart.Position - ball.Position).Unit
+                local dotProduct = velocity.Unit:Dot(directionToPlayer)
+                
+                if dotProduct > 0.7 then -- Bola vindo na direção do jogador
+                    -- Simular tecla de bloco (pode precisar de ajuste)
+                    keypress(0x52) -- Tecla R
+                    wait(0.1)
+                    keyrelease(0x52)
+                end
+            end
+        end
+    end
+end
+
+-- Função para ESP da bola
+local function BallESPFunction()
+    while Config.BallESP do
+        wait(0.5)
+        local ball = FindBall()
+        if ball then
+            -- Criar highlight se não existir
+            if not ball:FindFirstChild("BallHighlight") then
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "BallHighlight"
+                highlight.FillColor = Color3.fromRGB(255, 255, 0)
+                highlight.OutlineColor = Color3.fromRGB(255, 165, 0)
+                highlight.Parent = ball
+            end
+        end
+        -- Limpar highlights antigos
+        for _, obj in pairs(game:GetService("Workspace"):GetDescendants()) do
+            if obj.Name == "BallHighlight" and not FindBall() then
+                obj:Destroy()
+            end
+        end
+    end
+end
+
+-- Função para ESP dos jogadores
+local function PlayerESPFunction()
+    while Config.PlayerESP do
+        wait(1)
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                local character = player.Character
+                if character and character:FindFirstChild("HumanoidRootPart") then
+                    -- Criar billboard gui se não existir
+                    if not character:FindFirstChild("PlayerESP") then
+                        local billboard = Instance.new("BillboardGui")
+                        billboard.Name = "PlayerESP"
+                        billboard.Size = UDim2.new(0, 100, 0, 50)
+                        billboard.StudsOffset = Vector3.new(0, 3, 0)
+                        billboard.AlwaysOnTop = true
+                        billboard.Parent = character.HumanoidRootPart
+                        
+                        local textLabel = Instance.new("TextLabel")
+                        textLabel.Size = UDim2.new(1, 0, 1, 0)
+                        textLabel.Text = player.Name
+                        textLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+                        textLabel.BackgroundTransparency = 1
+                        textLabel.Font = Enum.Font.GothamBold
+                        textLabel.TextStrokeTransparency = 0.5
+                        textLabel.Parent = billboard
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Função para teleportar até a bola
+local function TeleportToBallFunction()
+    while Config.TeleportToBall do
+        wait(0.5)
+        local ball = FindBall()
+        if ball and Character and HumanoidRootPart then
+            -- Teleportar para perto da bola (não diretamente nela)
+            local offset = Vector3.new(math.random(-5, 5), 0, math.random(-5, 5))
+            HumanoidRootPart.CFrame = CFrame.new(ball.Position + offset)
+        end
+    end
+end
+
+-- Função principal de loop
+local function MainLoop()
+    while wait(0.1) do
+        -- Aplicar velocidade de caminhada
+        if Humanoid then
+            Humanoid.WalkSpeed = Config.WalkSpeed
+            Humanoid.JumpPower = Config.JumpPower
+            
+            -- Anti-stun (remove efeitos de stun)
+            if Config.AntiStun then
+                for _, v in pairs(Humanoid:GetPlayingAnimationTracks()) do
+                    if v.Name:lower():find("stun") or v.Name:lower():find("hit") then
+                        v:Stop()
+                    end
+                end
+            end
+            
+            -- Stamina infinita (remove cansaço)
+            if Config.InfiniteStamina then
+                for _, v in pairs(Character:GetDescendants()) do
+                    if v:IsA("NumberValue") and v.Name:lower():find("stamina") then
+                        v.Value = 100
+                    end
+                end
+            end
+            
+            -- No cooldown (remove cooldowns de habilidades)
+            if Config.NoCooldown then
+                for _, v in pairs(Character:GetDescendants()) do
+                    if v:IsA("NumberValue") and (v.Name:lower():find("cooldown") or v.Name:lower():find("cd")) then
+                        v.Value = 0
+                    end
+                end
+            end
+            
+            -- Auto jump quando perto da bola e ela está alta
+            if Config.AutoJump then
+                local ball = FindBall()
+                if ball then
+                    local distance = (HumanoidRootPart.Position - ball.Position).Magnitude
+                    if distance < 10 and ball.Position.Y > HumanoidRootPart.Position.Y + 5 then
+                        Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                    end
+                end
+            end
+        end
+        
+        -- Verificar se funções devem ser iniciadas/paradas
+        coroutine.wrap(function()
+            -- Iniciar/parar funções baseado nas configurações
+            if Config.AutoServe then coroutine.wrap(AutoServeFunction)() end
+            if Config.AutoSpike then coroutine.wrap(AutoSpikeFunction)() end
+            if Config.AutoBlock then coroutine.wrap(AutoBlockFunction)() end
+            if Config.BallESP then coroutine.wrap(BallESPFunction)() end
+            if Config.PlayerESP then coroutine.wrap(PlayerESPFunction)() end
+            if Config.TeleportToBall then coroutine.wrap(TeleportToBallFunction)() end
+        end)()
+    end
+end
+
+-- Limpar ESP quando desativado
+game:GetService("RunService").Heartbeat:Connect(function()
+    if not Config.BallESP then
+        for _, obj in pairs(game:GetService("Workspace"):GetDescendants()) do
+            if obj.Name == "BallHighlight" then
+                obj:Destroy()
+            end
+        end
+    end
+    
+    if not Config.PlayerESP then
+        for _, player in pairs(Players:GetPlayers()) do
+            local character = player.Character
+            if character and character:FindFirstChild("PlayerESP") then
+                character.PlayerESP:Destroy()
+            end
+        end
+    end
+end)
+
+-- Iniciar loop principal
+coroutine.wrap(MainLoop)()
+
+-- Função para fechar GUI (atalho)
+local UserInputService = game:GetService("UserInputService")
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        MainFrame.Visible = not MainFrame.Visible
+    end
+end)
+
+print("Script Volleyball Legends carregado com sucesso!")
+print("Pressione RightShift para mostrar/esconder o menu")
+print("Funções ativas:")
+for func, enabled in pairs(Config) do
+    if type(enabled) == "boolean" then
+        print("- " .. func .. ": " .. tostring(enabled))
+    end
+end
+
+-- Aviso de segurança (evitar detecção)
+wait(2)
+print("Script otimizado para evitar detecção")
